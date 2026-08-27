@@ -61,16 +61,6 @@ body{font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;backgr
 .goal-add input,.goal-add select{padding:9px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px}
 .goal-add input[type=text]{flex:1;min-width:180px}
 .goal-add button{padding:9px 16px;border:none;border-radius:6px;background:var(--blue);color:#fff;font-weight:600;cursor:pointer}
-.goal-item{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)}
-.goal-item:last-child{border:none}
-.goal-info{flex:1}
-.goal-info .t{font-weight:600;font-size:14px}
-.goal-info .m{font-size:11px;color:var(--mut);margin-top:2px}
-.goal-bar{width:130px;height:8px;background:#eef0f3;border-radius:99px;overflow:hidden;flex-shrink:0}
-.goal-bar i{display:block;height:100%;background:var(--blue);border-radius:99px;transition:width .3s}
-.goal-pct{font-family:var(--mono);font-size:12px;font-weight:700;width:42px;text-align:right}
-.goal-del{border:none;background:none;color:var(--mut);cursor:pointer;font-size:16px;padding:4px}
-.goal-del:hover{color:var(--red)}
 /* habits */
 .habit-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
 .habit-card{border:1px solid var(--border);border-radius:8px;padding:12px;background:#fff}
@@ -134,8 +124,16 @@ textarea:focus{outline:none;border-color:var(--blue)}
 .mm-kid b{color:var(--ink);font-weight:600}
 .mm-empty{color:#9ca3af;font-size:13px;padding:20px;text-align:center}
 /* goal detail */
-.goal-item{align-items:flex-start;flex-wrap:wrap}
+.goal-item{align-items:flex-start;flex-wrap:wrap;padding:12px 0;border-bottom:1px solid var(--border)}
+.goal-item:last-child{border:none}
+.goal-del{border:none;background:none;color:var(--mut);cursor:pointer;font-size:16px;padding:4px}
+.goal-del:hover{color:var(--red)}
 .goal-main{flex:1;min-width:220px}
+.goal-meta-line{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:8px;width:100%}
+.goal-bar{flex:1;min-width:80px;max-width:260px;height:8px;background:#eef0f3;border-radius:99px;overflow:hidden}
+.goal-bar i{display:block;height:100%;background:var(--blue);border-radius:99px;transition:width .3s}
+.goal-pct{font-family:var(--mono);font-size:12px;font-weight:700;width:42px;text-align:right;flex-shrink:0}
+.goal-actions{margin-left:auto;display:flex;gap:6px;flex-shrink:0}
 .goal-measures{margin-top:6px;font-size:12px;color:var(--mut);line-height:1.6;display:none}
 .goal-item.open .goal-measures{display:block}
 .goal-measures b{color:var(--ink)}
@@ -468,18 +466,22 @@ function goalItemHTML(g,i){
   const ms=(g.measures||[]).map(m=>`<div class="mm-kid">${esc(m)}</div>`).join('')||'<div style="font-size:11px;color:#9ca3af">暂无落地措施，在对话中让AI补充</div>';
   const log=((g.log)||[]).slice().reverse().map(l=>`<div class="li"><span class="dt">${l.date}</span> · ${esc(l.note)}</div>`).join('')||'';
   return `<div class="goal-item ${g.done?'done':''}" id="gi-${i}">
-    <div class="goal-main">
+    <div class="goal-main" style="width:100%">
       <div class="t" style="font-weight:600;font-size:14px;cursor:pointer" onclick="toggleGoal(${i})">${esc(g.title)}</div>
       <div class="m" style="font-size:11px;color:var(--mut);margin-top:2px">${g.cat} · 截止 ${g.deadline||'未设置'} · 创建 ${g.created}${g.done?' · 🎉 已完成':''}</div>
       <div class="goal-measures" style="margin-top:6px;font-size:12px;color:var(--mut);line-height:1.6"><b>📋 落地措施：</b><div style="display:flex;flex-direction:column;gap:3px;margin-top:3px">${ms}</div></div>
       ${log?`<div class="goal-log"><b style="font-size:11px">🔄 更新记录（最新在前）：</b>${log}</div>`:''}
       <span class="goal-toggle" onclick="toggleGoal(${i})">展开详情 ▾</span>
     </div>
-    <div class="goal-bar" style="width:110px"><i style="width:${c}%"></i></div><div class="goal-pct">${c}%</div>
-    ${g.done
-      ?`<button class="goal-reopen-btn" onclick="toggleGoalDone(${i})">↩ 恢复</button>`
-      :`<button class="goal-done-btn" onclick="toggleGoalDone(${i})">✓ 完成</button>`}
-    <button class="goal-del" onclick="delGoal(${i})">✕</button>
+    <div class="goal-meta-line">
+      <div class="goal-bar"><i style="width:${c}%"></i></div><div class="goal-pct">${c}%</div>
+      <div class="goal-actions">
+        ${g.done
+          ?`<button class="goal-reopen-btn" onclick="toggleGoalDone(${i})">↩ 恢复</button>`
+          :`<button class="goal-done-btn" onclick="toggleGoalDone(${i})">✓ 完成</button>`}
+        <button class="goal-del" onclick="delGoal(${i})">✕</button>
+      </div>
+    </div>
   </div>`;
 }
 function renderGoal(){
