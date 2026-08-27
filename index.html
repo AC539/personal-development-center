@@ -106,6 +106,10 @@ textarea:focus{outline:none;border-color:var(--blue)}
 .dash-actions a:hover{border-color:var(--ink)}
 .hint{background:var(--yellow);border-radius:8px;padding:12px 14px;font-size:13px;margin-top:16px;border:1px solid rgba(0,0,0,.08)}
 .footer{position:fixed;bottom:0;left:0;right:0;background:rgba(244,245,247,.92);backdrop-filter:blur(6px);border-top:1px solid var(--border);font-size:11px;color:var(--mut);text-align:center;padding:8px}
+/* user switch */
+.user-switch{display:flex;gap:4px;border:1.5px solid var(--ink);border-radius:8px;padding:3px;background:#fff}
+.user-switch button{border:none;background:transparent;padding:5px 14px;font-size:13px;font-weight:600;border-radius:5px;cursor:pointer;color:var(--mut)}
+.user-switch button.on{background:var(--ink);color:#fff}
 /* mindmap */
 .mm-root{display:flex;gap:14px;min-width:900px}
 .mm-center{flex:0 0 150px;background:var(--ink);color:#fff;border-radius:12px;padding:18px 14px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;align-self:center}
@@ -147,7 +151,13 @@ textarea:focus{outline:none;border-color:var(--blue)}
 <div class="wrap">
   <div class="hd">
     <div class="logo"><span class="dot"></span><h1>个人发展中心</h1></div>
-    <div class="today" id="today"></div>
+    <div style="display:flex;align-items:center;gap:14px">
+      <div class="user-switch" id="user-switch">
+        <button data-u="me" class="on">我</button>
+        <button data-u="her">她</button>
+      </div>
+      <div class="today" id="today"></div>
+    </div>
   </div>
 
   <nav class="nav">
@@ -280,17 +290,37 @@ textarea:focus{outline:none;border-color:var(--blue)}
 <div class="footer">个人发展中心 · 数据仅保存在本机浏览器 · 建议每周五复盘一次</div>
 
 <script>
-// ========== DATA (localStorage) ==========
+// ========== DATA (localStorage, 按用户隔离) ==========
 const KEY='pdc_v1_';
 const DIMS=['专业能力','职业发展','财务能力','身体健康','心理韧性','关系经营','认知迭代','AI工具'];
 const todayStr=()=>new Date().toISOString().slice(0,10);
-const load=(k,d)=>{try{return JSON.parse(localStorage.getItem(KEY+k))??d}catch(e){return d}};
-const save=(k,v)=>localStorage.setItem(KEY+k,JSON.stringify(v));
+let currentUser=localStorage.getItem('pdc_current_user')||'me';
+const uk=()=>KEY+currentUser+'_';
+const load=(k,d)=>{try{return JSON.parse(localStorage.getItem(uk()+k))??d}catch(e){return d}};
+const save=(k,v)=>localStorage.setItem(uk()+k,JSON.stringify(v));
 let state={dim:{},history:[],goals:[],habits:{},reviews:[],mindmap:null};
 const MM_COLORS=['#2563eb','#16a34a','#f59e0b','#dc2626','#7c3aed','#0d9488','#db2777','#ea580c'];
 
-// ========== 自动同步：读取 pdc_data.js（AI在对话中生成，放同目录） ==========
+// ========== 用户切换 ==========
+function switchUser(u){
+  if(u===currentUser)return;
+  currentUser=u;localStorage.setItem('pdc_current_user',u);
+  document.querySelectorAll('#user-switch button').forEach(b=>b.classList.toggle('on',b.dataset.u===u));
+  loadState();renderAll();
+  const h=document.getElementById('dash-hint');
+  h.innerHTML=(u==='her')?'👩 当前为「她」的空间，数据与「我」完全隔离。':'👨 当前为「我」的空间。';
+}
+document.querySelectorAll('#user-switch button').forEach(b=>b.onclick=()=>switchUser(b.dataset.u));
+
+function loadState(){
+  state.dim=load('dim',{});state.history=load('history',[]);
+  state.goals=load('goals',[]);state.habits=load('habits',{});
+  state.reviews=load('reviews',[]);state.mindmap=load('mindmap',null);
+}
+
+// ========== 自动同步：仅对「我」生效，读取 pdc_data.js（AI在对话中生成，放同目录） ==========
 function autoSync(){
+  if(currentUser!=='me')return false; // 她的数据不受云端AI数据影响
   if(typeof window.PDC_DATA==='undefined')return false;
   const d=window.PDC_DATA;if(!d)return false;
   let msgs=[];
@@ -330,9 +360,8 @@ function autoSync(){
 }
 
 function init(){
-  state.dim=load('dim',{});state.history=load('history',[]);
-  state.goals=load('goals',[]);state.habits=load('habits',{});
-  state.reviews=load('reviews',[]);state.mindmap=load('mindmap',null);
+  document.querySelectorAll('#user-switch button').forEach(b=>b.classList.toggle('on',b.dataset.u===currentUser));
+  loadState();
   const synced=autoSync();
   document.getElementById('today').textContent=todayStr()+' · '+['周日','周一','周二','周三','周四','周五','周六'][new Date().getDay()];
   renderAll();
