@@ -145,6 +145,17 @@ textarea:focus{outline:none;border-color:var(--blue)}
 .goal-log .li:first-child{border-top:none}
 .goal-log .dt{font-family:var(--mono);color:#6b7280}
 .goal-toggle{font-size:11px;color:var(--blue);cursor:pointer;font-weight:600;margin-top:4px}
+.goal-done-btn{border:1.5px solid var(--green);background:#f0fdf4;color:var(--green);border-radius:6px;padding:4px 10px;font-size:12px;font-weight:600;cursor:pointer}
+.goal-done-btn:hover{background:var(--green);color:#fff}
+.goal-reopen-btn{border:1px solid var(--border);background:#fff;color:var(--mut);border-radius:6px;padding:4px 10px;font-size:12px;font-weight:600;cursor:pointer}
+.goal-reopen-btn:hover{border-color:var(--ink);color:var(--ink)}
+.goal-fold{margin:14px 0 6px;font-size:14px;font-weight:700;display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none}
+.goal-fold .cnt{background:#eef0f3;border-radius:99px;font-size:11px;font-weight:600;padding:2px 8px;color:var(--mut)}
+.goal-fold .arr{margin-left:auto;font-size:12px;color:var(--mut);transition:transform .15s}
+.goal-fold.open .arr{transform:rotate(90deg)}
+.goal-fold-body{display:none}
+.goal-fold.open .goal-fold-body{display:block}
+.goal-item.done .t{text-decoration:line-through;color:var(--mut)}
 </style>
 </head>
 <body>
@@ -452,23 +463,46 @@ function trendSVG(el,data,label){
 
 // ========== GOALS ==========
 function esc(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function goalItemHTML(g,i){
+  const c=+g.prog||0;
+  const ms=(g.measures||[]).map(m=>`<div class="mm-kid">${esc(m)}</div>`).join('')||'<div style="font-size:11px;color:#9ca3af">暂无落地措施，在对话中让AI补充</div>';
+  const log=((g.log)||[]).slice().reverse().map(l=>`<div class="li"><span class="dt">${l.date}</span> · ${esc(l.note)}</div>`).join('')||'';
+  return `<div class="goal-item ${g.done?'done':''}" id="gi-${i}">
+    <div class="goal-main">
+      <div class="t" style="font-weight:600;font-size:14px;cursor:pointer" onclick="toggleGoal(${i})">${esc(g.title)}</div>
+      <div class="m" style="font-size:11px;color:var(--mut);margin-top:2px">${g.cat} · 截止 ${g.deadline||'未设置'} · 创建 ${g.created}${g.done?' · 🎉 已完成':''}</div>
+      <div class="goal-measures" style="margin-top:6px;font-size:12px;color:var(--mut);line-height:1.6"><b>📋 落地措施：</b><div style="display:flex;flex-direction:column;gap:3px;margin-top:3px">${ms}</div></div>
+      ${log?`<div class="goal-log"><b style="font-size:11px">🔄 更新记录（最新在前）：</b>${log}</div>`:''}
+      <span class="goal-toggle" onclick="toggleGoal(${i})">展开详情 ▾</span>
+    </div>
+    <div class="goal-bar" style="width:110px"><i style="width:${c}%"></i></div><div class="goal-pct">${c}%</div>
+    ${g.done
+      ?`<button class="goal-reopen-btn" onclick="toggleGoalDone(${i})">↩ 恢复</button>`
+      :`<button class="goal-done-btn" onclick="toggleGoalDone(${i})">✓ 完成</button>`}
+    <button class="goal-del" onclick="delGoal(${i})">✕</button>
+  </div>`;
+}
 function renderGoal(){
   const list=document.getElementById('goal-list');
   if(!state.goals.length){list.innerHTML='<div class="sub" style="color:#9ca3af">还没有目标，添加一个吧 👆</div>';return;}
-  list.innerHTML=state.goals.map((g,i)=>{const c=+g.prog||0;
-    const ms=(g.measures||[]).map(m=>`<div class="mm-kid">${esc(m)}</div>`).join('')||'<div style="font-size:11px;color:#9ca3af">暂无落地措施，在对话中让AI补充</div>';
-    const log=((g.log)||[]).slice().reverse().map(l=>`<div class="li"><span class="dt">${l.date}</span> · ${esc(l.note)}</div>`).join('')||'';
-    return `<div class="goal-item" id="gi-${i}">
-      <div class="goal-main">
-        <div class="t" style="font-weight:600;font-size:14px;cursor:pointer" onclick="toggleGoal(${i})">${esc(g.title)}</div>
-        <div class="m" style="font-size:11px;color:var(--mut);margin-top:2px">${g.cat} · 截止 ${g.deadline||'未设置'} · 创建 ${g.created}</div>
-        <div class="goal-measures" style="margin-top:6px;font-size:12px;color:var(--mut);line-height:1.6"><b>📋 落地措施：</b><div style="display:flex;flex-direction:column;gap:3px;margin-top:3px">${ms}</div></div>
-        ${log?`<div class="goal-log"><b style="font-size:11px">🔄 更新记录（最新在前）：</b>${log}</div>`:''}
-        <span class="goal-toggle" onclick="toggleGoal(${i})">展开详情 ▾</span>
-      </div>
-      <div class="goal-bar" style="width:110px"><i style="width:${c}%"></i></div><div class="goal-pct">${c}%</div>
-      <button class="goal-del" onclick="delGoal(${i})">✕</button>
-    </div>`;}).join('');
+  const active=state.goals.map((g,i)=>({g,i})).filter(x=>!x.g.done);
+  const done=state.goals.map((g,i)=>({g,i})).filter(x=>x.g.done);
+  let html='';
+  if(active.length){
+    html+=`<div class="goal-fold" onclick="this.classList.toggle('open')"><span>📌 进行中目标</span><span class="cnt">${active.length}</span><span class="arr">▸</span></div>
+    <div class="goal-fold open">${active.map(x=>goalItemHTML(x.g,x.i)).join('')}</div>`;
+  }
+  if(done.length){
+    html+=`<div class="goal-fold" onclick="this.classList.toggle('open')"><span>✅ 已完成目标</span><span class="cnt">${done.length}</span><span class="arr">▸</span></div>
+    <div class="goal-fold">${done.map(x=>goalItemHTML(x.g,x.i)).join('')}</div>`;
+  }
+  list.innerHTML=html||'<div class="sub" style="color:#9ca3af">还没有目标，添加一个吧 👆</div>';
+}
+function toggleGoalDone(i){
+  state.goals[i].done=!state.goals[i].done;
+  if(state.goals[i].done){state.goals[i].prog=100;state.goals[i].log=state.goals[i].log||[];state.goals[i].log.push({date:todayStr(),note:'🎉 标记为完成'});}
+  else{state.goals[i].log=state.goals[i].log||[];state.goals[i].log.push({date:todayStr(),note:'恢复为进行中'});}
+  save('goals',state.goals);renderGoal();renderDash();
 }
 function toggleGoal(i){
   const el=document.getElementById('gi-'+i);
