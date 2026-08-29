@@ -124,7 +124,7 @@ textarea:focus{outline:none;border-color:var(--blue)}
 .mm-kid b{color:var(--ink);font-weight:600}
 .mm-empty{color:#9ca3af;font-size:13px;padding:20px;text-align:center}
 /* goal detail */
-.goal-item{align-items:flex-start;flex-wrap:wrap;padding:12px 0;border-bottom:1px solid var(--border)}
+.goal-item{display:flex;align-items:flex-start;flex-wrap:wrap;padding:12px 0;border-bottom:1px solid var(--border)}
 .goal-item:last-child{border:none}
 .goal-del{border:none;background:none;color:var(--mut);cursor:pointer;font-size:16px;padding:4px}
 .goal-del:hover{color:var(--red)}
@@ -147,12 +147,12 @@ textarea:focus{outline:none;border-color:var(--blue)}
 .goal-done-btn:hover{background:var(--green);color:#fff}
 .goal-reopen-btn{border:1px solid var(--border);background:#fff;color:var(--mut);border-radius:6px;padding:4px 10px;font-size:12px;font-weight:600;cursor:pointer}
 .goal-reopen-btn:hover{border-color:var(--ink);color:var(--ink)}
-.goal-fold{margin:14px 0 6px;font-size:14px;font-weight:700;display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none}
+.goal-sec{margin:14px 0}
+.goal-fold{font-size:14px;font-weight:700;display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none;padding:6px 0;border-bottom:1px solid var(--border)}
 .goal-fold .cnt{background:#eef0f3;border-radius:99px;font-size:11px;font-weight:600;padding:2px 8px;color:var(--mut)}
-.goal-fold .arr{margin-left:auto;font-size:12px;color:var(--mut);transition:transform .15s}
-.goal-fold.open .arr{transform:rotate(90deg)}
-.goal-fold-body{display:none}
-.goal-fold.open .goal-fold-body{display:block}
+.goal-fold .arr{color:var(--mut);font-size:12px;transition:transform .15s}
+.goal-sec .goal-fold-body{display:none}
+.goal-sec.open .goal-fold-body{display:block}
 .goal-item.done .t{text-decoration:line-through;color:var(--mut)}
 </style>
 </head>
@@ -491,14 +491,24 @@ function renderGoal(){
   const done=state.goals.map((g,i)=>({g,i})).filter(x=>x.g.done);
   let html='';
   if(active.length){
-    html+=`<div class="goal-fold" onclick="this.classList.toggle('open')"><span>📌 进行中目标</span><span class="cnt">${active.length}</span><span class="arr">▸</span></div>
-    <div class="goal-fold open">${active.map(x=>goalItemHTML(x.g,x.i)).join('')}</div>`;
+    html+=`<div class="goal-sec open">
+      <div class="goal-fold" onclick="toggleSec(this)"><span>📌 进行中目标</span><span class="cnt">${active.length}</span><span class="arr">▸</span></div>
+      <div class="goal-fold-body">${active.map(x=>goalItemHTML(x.g,x.i)).join('')}</div>
+    </div>`;
   }
   if(done.length){
-    html+=`<div class="goal-fold" onclick="this.classList.toggle('open')"><span>✅ 已完成目标</span><span class="cnt">${done.length}</span><span class="arr">▸</span></div>
-    <div class="goal-fold">${done.map(x=>goalItemHTML(x.g,x.i)).join('')}</div>`;
+    html+=`<div class="goal-sec">
+      <div class="goal-fold" onclick="toggleSec(this)"><span>✅ 已完成目标</span><span class="cnt">${done.length}</span><span class="arr">▸</span></div>
+      <div class="goal-fold-body">${done.map(x=>goalItemHTML(x.g,x.i)).join('')}</div>
+    </div>`;
   }
   list.innerHTML=html||'<div class="sub" style="color:#9ca3af">还没有目标，添加一个吧 👆</div>';
+}
+function toggleSec(head){
+  const sec=head.parentElement;
+  sec.classList.toggle('open');
+  const arr=head.querySelector('.arr');
+  if(arr)arr.textContent=sec.classList.contains('open')?'▾':'▸';
 }
 function toggleGoalDone(i){
   state.goals[i].done=!state.goals[i].done;
