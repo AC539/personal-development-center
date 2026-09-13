@@ -332,6 +332,25 @@ function autoSync(){
   if(currentUser!=='me')return false; // 她的数据不受云端AI数据影响
   if(typeof window.PDC_DATA==='undefined')return false;
   const d=window.PDC_DATA;if(!d)return false;
+  // 🚫 隐私清理：命中禁用词的内容一律从本地数据中移除（含 localStorage 历史存量），清理后再做增量同步
+  const BAN=['老婆','伴侣','媳妇','夫妻'];
+  const hit=t=>typeof t==='string'&&BAN.some(k=>t.includes(k));
+  if(Array.isArray(state.reviews)){
+    const b0=state.reviews.length;
+    state.reviews=state.reviews.filter(r=>!hit(r.content));
+    if(state.reviews.length!==b0)save('reviews',state.reviews);
+  }
+  if(Array.isArray(state.goals)){
+    state.goals.forEach(g=>{
+      if(Array.isArray(g.measures))g.measures=g.measures.filter(m=>!hit(m));
+      if(Array.isArray(g.log))g.log=g.log.filter(l=>!hit(l.note));
+    });
+    save('goals',state.goals);
+  }
+  if(state.mindmap&&Array.isArray(state.mindmap.branches)){
+    state.mindmap.branches.forEach(b=>{if(Array.isArray(b.kids))b.kids=b.kids.filter(k=>!hit(k));});
+    save('mindmap',state.mindmap);
+  }
   let msgs=[];
   if(d.dim&&Object.keys(d.dim).length){state.dim=d.dim;save('dim',d.dim);msgs.push('能力评估');}
   if(Array.isArray(d.history)&&d.history.length){state.history=d.history.slice(-12);save('history',state.history);msgs.push('分数趋势');}
